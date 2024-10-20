@@ -51,15 +51,15 @@ const List = ({ children }: React.PropsWithChildren) => {
         pagination: {
             mode: 'off'
         },
-        meta:{
+        meta: {
             gqlQuery: TASKS_QUERY
         }
     })
 
-    const { mutate : updateTask } = useUpdate();
-  
+    const { mutate: updateTask } = useUpdate();
+
     const taskStages = React.useMemo(() => {
-        if (!tasks?.data || !stages?.data){
+        if (!tasks?.data || !stages?.data) {
             return {
                 unassignedStage: [],
                 stages: []
@@ -68,9 +68,9 @@ const List = ({ children }: React.PropsWithChildren) => {
 
         const unassignedStage = tasks.data.filter((task) => task.stageId === null)
 
-        const grouped: TaskStage[] = stages.data.map((stage) => ({
+        const grouped = stages.data.map((stage) => ({
             ...stage,
-            ...tasks.data.filter((task) => task.stageId?.toString() === stage.id)
+            tasks: [...tasks.data.filter((task) => task.stageId?.toString() === stage.id)]
         }))
 
         return {
@@ -79,7 +79,7 @@ const List = ({ children }: React.PropsWithChildren) => {
         }
     }, [stages, tasks])
 
-    const handleAddCard = (args:{ stageId: string}) => {
+    const handleAddCard = (args: { stageId: string }) => {
         const path = args.stageId === 'unassigned' ? '/tasks/new' : `/task/new?stageId=${args.stageId}`
 
         replace(path);
@@ -92,85 +92,89 @@ const List = ({ children }: React.PropsWithChildren) => {
 
         if (taskStageId === stageId) return;
 
-        if(stageId === 'unaasigned') {
-            stageId=null 
+        if (stageId === "unassigned") {
+            stageId = null
         }
+
         updateTask({
+
             resource: 'tasks',
+            successNotification: false,
+            mutationMode: 'optimistic',
+            meta: {
+                gqlMutation: UPDATE_TASK_STAGE_MUTATION
+            },
+
+
             id: taskId,
             values: {
                 stageId: stageId,
             },
-            successNotification: false,
-            mutationMode: 'optimistic',
-            meta: {
-                gqlMutation: UPDATE_TASK_STAGE_MUTATION 
-            }
+
         })
     }
 
     const isLoading = isLoadingStages || isLoadingTasks
-
-    if(isLoading) return <PageSkeleton />
+    if (isLoading) return <PageSkeleton />
 
     return (
-    <>
-        <KanbanBoardContainer>
-            <KanbanBoard onDragEnd={handleOnDragEnd}>
-                <KanbanColumn
-                    id="unassigned"
-                    title={"unassigned"}
-                    count={taskStages.unassignedStage.length || 0}
-                    onAddClick= {() => handleAddCard({stageId: 'unassigned'})}
-                >
-                    {taskStages.unassignedStage.map((task) => (
-                        <KanbanItem key={task.id} id={task.id}
-                            data={{...task, stageId: 'unassigned' }}
-                        >
-                            <ProjectCardMemo 
-                                {...task}
-                                dueDate={task.dueDate || undefined }
-                            />
-                        </KanbanItem>
-                    ))}
-
-                    {!taskStages.unassignedStage.length && (
-                        <KanbanAddCardButton 
-                            onClick={() => handleAddCard({stageId: 'unassigned'})}
-                        />
-                    )} 
-                </KanbanColumn>
-
-                {taskStages.columns?.map((column) => (
+        <>
+            <KanbanBoardContainer>
+                <KanbanBoard onDragEnd={handleOnDragEnd}>
                     <KanbanColumn
-                        key={column.id}
-                        id={column.id}
-                        title={column.title}
-                        count={column.tasks?.length}
-                        onAddClick={() => handleAddCard({ stageId: column.id})}
+                        id="unassigned"
+                        title={"unassigned"}
+                        count={taskStages.unassignedStage.length}
+                        onAddClick={() => handleAddCard({ stageId: 'unassigned' })}
                     >
-                        {!isLoading && column.tasks?.map((task) => (
-                            <KanbanItem key={task.id} id={task.id} data={task}>
-                                <ProjectCardMemo 
+                        {taskStages.unassignedStage.map((task) => (
+                            <KanbanItem key={task.id} id={task.id}
+                                data={{ ...task, stageId: 'unassigned' }}
+                            >
+                                <ProjectCardMemo
                                     {...task}
                                     dueDate={task.dueDate || undefined}
                                 />
                             </KanbanItem>
                         ))}
-                        {!column.tasks?.length && (
-                            <KanbanAddCardButton 
-                                onClick={() => handleAddCard({stageId: column.id })}
+
+                        {!taskStages.unassignedStage.length && (
+                            <KanbanAddCardButton
+                                onClick={() => handleAddCard({ stageId: 'unassigned' })}
                             />
                         )}
                     </KanbanColumn>
-                ))}
-                    
-            </KanbanBoard>
-            
-        </KanbanBoardContainer>
-        {children}
-    </>
-  )
+
+                    {taskStages.columns?.map((column) => (
+                        <KanbanColumn
+                            key={column.id}
+                            id={column.id}
+                            title={column.title}
+                            count={column.tasks.length}
+                            onAddClick={() => handleAddCard({ stageId: column.id })}
+                        >
+                            {!isLoading && column.tasks.map((task) => (
+                                <KanbanItem key={task.id} id={task.id} data={{ ...task, stageId: task.stageId }}>
+                                    <ProjectCardMemo
+                                        {...task}
+                                        dueDate={task.dueDate || undefined}
+                                    />
+                                </KanbanItem>
+                            ))}
+                            {!column.tasks?.length && (
+                                <KanbanAddCardButton
+                                    onClick={() => handleAddCard({ stageId: column.id })}
+                                />
+                            )}
+                        </KanbanColumn>
+                    ))}
+
+                </KanbanBoard>
+
+            </KanbanBoardContainer>
+            {children}
+        </>
+    )
 }
 
 export default List
@@ -181,10 +185,10 @@ const PageSkeleton = () => {
 
     return (
         <KanbanBoardContainer>
-            {Array.from({ length: columnCount}).map((_, index) => (
+            {Array.from({ length: columnCount }).map((_, index) => (
                 <KanbanColumnSkeleton key={index}>
-                    {Array.from({length: itemCount}).map((_, index)=> (
-                        <ProjectCardSkeleton key={index}/>
+                    {Array.from({ length: itemCount }).map((_, index) => (
+                        <ProjectCardSkeleton key={index} />
                     ))}
                 </KanbanColumnSkeleton>
             ))}
